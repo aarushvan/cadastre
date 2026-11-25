@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Vet
+        run: go vet ./...
+      - name: Test
+        run: go test -count=1 -v -race -timeout=60s ./...
+      - name: Build and verify size
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          go build -trimpath -ldflags="-s -w" -o cadastre .
+          size=$(wc -c < cadastre)
+          echo "cadastre binary size: $size bytes"
+          test "$size" -lt 6000000
+          ./cadastre version
+          rm -f cadastre
